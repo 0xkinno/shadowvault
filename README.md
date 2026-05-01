@@ -1,57 +1,159 @@
-# Sample Hardhat 3 Beta Project (`mocha` and `ethers`)
+# 🔐 ShadowVault — Confidential Finance on Ethereum
 
-This project showcases a Hardhat 3 Beta project using `mocha` for tests and the `ethers` library for Ethereum interactions.
+> **Zama Developer Program — Mainnet Season 2 | Builder Track**
 
-To learn more about the Hardhat 3 Beta, please visit the [Getting Started guide](https://hardhat.org/docs/getting-started#getting-started-with-hardhat-3). To share your feedback, join our [Hardhat 3 Beta](https://hardhat.org/hardhat3-beta-telegram-group) Telegram group or [open an issue](https://github.com/NomicFoundation/hardhat/issues/new) in our GitHub issue tracker.
+> The first fully private DeFi vault with FHE credit scoring and selective disclosure proofs.
 
-## Project Overview
+🌐 **Live Demo:** [shadowvault-6jkr.vercel.app](https://shadowvault-6jkr.vercel.app) 
+📄 **Contract:** [0xa31AAF62dCD1362D457BD02d3907Bf9958Ae027E](https://sepolia.etherscan.io/address/0xa31AAF62dCD1362D457BD02d3907Bf9958Ae027E)  
+🎥 **Video Demo:** [Link coming soon]
 
-This example project includes:
+---
 
-- A simple Hardhat configuration file.
-- Foundry-compatible Solidity unit tests.
-- TypeScript integration tests using `mocha` and ethers.js
-- Examples demonstrating how to connect to different types of networks, including locally simulating OP mainnet.
+## 🧠 What is ShadowVault?
 
-## Usage
+On regular blockchains, **everything is public**. Anyone can see:
+- How much crypto you hold
+- Your transaction history
+- Whether you qualify for a loan
 
-### Running Tests
+**ShadowVault fixes this.**
 
-To run all the tests in the project, execute the following command:
+Using **Zama's Fully Homomorphic Encryption (FHE)**, ShadowVault lets you:
+- Store funds that **nobody can see** — not even the blockchain
+- Get a **credit score** computed on your private data
+- **Prove financial facts** (e.g. "I have enough") without revealing your actual numbers
 
-```shell
-npx hardhat test
+Think of it like this:
+> 🏦 "I can prove I have more than $500 in my account — without showing you my bank statement."
+
+---
+
+## 🔄 The Product Loop
+
+┌─────────────────────────────────────────────────┐
+│                                                   │
+│   Deposit Privately                               │
+│        ↓                                         │
+│   Vault Activity → FHE Credit Score Generated    │
+│        ↓                                         │
+│   Score → Unlocks Loan Eligibility Proofs         │
+│        ↓                                         │
+│   Prove Facts Without Revealing Anything          │
+│                                                   │
+└─────────────────────────────────────────────────┘
+
+This is a **complete financial loop** — not just a demo. It's a product.
+
+---
+
+## ✨ Features
+
+### 🏦 1. Private Vault
+- Deposit any amount — encrypted locally before hitting the chain
+- Nobody sees your balance. Ever.
+- Withdraw safely — FHE checks if you have enough without revealing your balance
+- **5% APY yield** accrued entirely on encrypted values
+
+### ⭐ 2. Shadow Score (FHE Credit Score)
+- Submit encrypted income + encrypted debt
+- Smart contract computes your score **without seeing your raw data**
+- Score range: 300–800 (like a real credit score)
+- Formula runs 100% inside FHE — zero data exposure
+
+### 📋 3. Selective Disclosure Proofs
+- **proveScoreAbove(threshold)** — "My score is above 600" ✓ or ✗
+- **proveLoanEligibility(amount)** — "I qualify for this loan" ✓ or ✗  
+- **proveBalanceAbove(threshold)** — "I have enough funds" ✓ or ✗
+- Returns encrypted `ebool` — verifiable on-chain, reveals nothing
+
+---
+
+## 🔧 FHE Operations Showcased
+
+| Feature | FHE Operation | What It Does |
+|---|---|---|
+| Private deposit | `FHE.add(balance, encAmt)` | Adds encrypted amounts |
+| Safe withdrawal | `FHE.ge()` + `FHE.select()` | Checks balance privately |
+| Score computation | `FHE.mul()` + `FHE.div()` | Math on encrypted numbers |
+| Score capping | `FHE.select(overMax, 800, rawScore)` | Conditional without revealing |
+| Proof generation | `FHE.ge(score, threshold)` | Returns encrypted boolean |
+| Yield accrual | `FHE.mul()` + `FHE.div()` | APY on encrypted balance |
+
+Every core FHE operation is used naturally — not forced.
+
+---
+
+## 🚀 Deployment
+
+| Item | Details |
+|---|---|
+| Network | Sepolia Testnet |
+| Contract Address | `0xa31AAF62dCD1362D457BD02d3907Bf9958Ae027E` |
+| Frontend | Vercel |
+| FHE Library | `@fhevm/solidity` by Zama |
+
+---
+
+## 🛠 Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Smart Contract | Solidity 0.8.28 + Zama FHEVM |
+| Encryption | `@fhevm/solidity` — FHE.add, FHE.mul, FHE.div, FHE.select |
+| Access Control | OpenZeppelin Ownable + ReentrancyGuard |
+| Frontend | React + TypeScript + Vite |
+| Wallet | MetaMask + ethers.js v5 |
+| Deployment | Hardhat + Sepolia Testnet |
+| Hosting | Vercel |
+
+---
+
+## 📦 Run Locally
+
+```bash
+# 1. Clone
+git clone https://github.com/0xkinno/shadowvault
+cd shadowvault
+
+# 2. Install
+npm install --legacy-peer-deps
+
+# 3. Set up environment
+cp .env.example .env
+# Add your PRIVATE_KEY and SEPOLIA_RPC_URL
+
+# 4. Compile & Deploy
+npx hardhat compile
+npx hardhat run scripts/deploy.ts --network sepolia
+
+# 5. Run Frontend
+cd frontend
+npm install --legacy-peer-deps
+npm run dev
 ```
 
-You can also selectively run the Solidity or `mocha` tests:
+---
 
-```shell
-npx hardhat test solidity
-npx hardhat test mocha
-```
+## 🔐 How FHE Works Here (Simple Version)
 
-### Make a deployment to Sepolia
+Normal blockchain:   balance = 1000        ← everyone sees this
+ShadowVault:         balance = [encrypted] ← nobody sees this
+The contract can still do:
+encrypted_balance + encrypted_deposit = new_encrypted_balance
+Without ever knowing what the actual numbers are.
+This is Fully Homomorphic Encryption.
 
-This project includes an example Ignition module to deploy the contract. You can deploy this module to a locally simulated chain or to Sepolia.
+---
 
-To run the deployment to a local chain:
+## 👤 Author
 
-```shell
-npx hardhat ignition deploy ignition/modules/Counter.ts
-```
+**0xkinno**  
+Built for Zama Developer Program Season 2 — Builder Track  
+[GitHub](https://github.com/0xkinno) 
 
-To run the deployment to Sepolia, you need an account with funds to send the transaction. The provided Hardhat configuration includes a Configuration Variable called `SEPOLIA_PRIVATE_KEY`, which you can use to set the private key of the account you want to use.
+---
 
-You can set the `SEPOLIA_PRIVATE_KEY` variable using the `hardhat-keystore` plugin or by setting it as an environment variable.
+## 📜 License
 
-To set the `SEPOLIA_PRIVATE_KEY` config variable using `hardhat-keystore`:
-
-```shell
-npx hardhat keystore set SEPOLIA_PRIVATE_KEY
-```
-
-After setting the variable, you can run the deployment with the Sepolia network:
-
-```shell
-npx hardhat ignition deploy --network sepolia ignition/modules/Counter.ts
-```
+BSD-3-Clause-Clear
