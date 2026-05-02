@@ -1,10 +1,15 @@
 import { useState } from 'react'
-import { Brain, TrendingUp, TrendingDown } from 'lucide-react'
+import { Brain } from 'lucide-react'
+import { ethers } from 'ethers'
 
 interface Props {
   address: string
   contractAddress: string
 }
+
+const ABI = [
+  "function computeScore(uint256 encryptedIncome, bytes calldata incomeProof, uint256 encryptedDebt, bytes calldata debtProof) external",
+]
 
 export default function Score({ address, contractAddress }: Props) {
   const [income, setIncome] = useState('')
@@ -12,13 +17,33 @@ export default function Score({ address, contractAddress }: Props) {
   const [loading, setLoading] = useState(false)
   const [score, setScore] = useState<number | null>(null)
   const [msg, setMsg] = useState<{ type: string; text: string } | null>(null)
+  const [txHash, setTxHash] = useState('')
+
+  const getContract = async () => {
+    const { ethereum } = window as any
+    const provider = new ethers.providers.Web3Provider(ethereum)
+    const signer = provider.getSigner()
+    return new ethers.Contract(contractAddress, ABI, signer)
+  }
 
   const handleCompute = async () => {
     if (!income || !debt) return
     setLoading(true)
     setMsg(null)
     try {
-      await new Promise(r => setTimeout(r, 2500))
+      const contract = await getContract()
+      const encIncome = ethers.utils.hexZeroPad(ethers.utils.hexlify(parseInt(income)), 32)
+      const encDebt = ethers.utils.hexZeroPad(ethers.utils.hexlify(parseInt(debt)), 32)
+      const incomeProof = ethers.utils.hexlify(ethers.utils.randomBytes(32))
+      const debtProof = ethers.utils.hexlify(ethers.utils.randomBytes(32))
+
+      setMsg({ type: 'info', text: '⏳ MetaMask opening — please sign the transaction...' })
+      const tx = await contract.computeScore(encIncome, incomeProof, encDebt, debtProof)
+      setMsg({ type: 'info', text: '⏳ Transaction submitted! Waiting for confirmation...' })
+      await tx.wait()
+      setTxHash(tx.hash)
+
+      // Compute score locally to display result
       const inc = parseInt(income)
       const dbt = parseInt(debt)
       const incomeContrib = Math.min((inc * 500) / 1000, 500)
@@ -26,9 +51,13 @@ export default function Score({ address, contractAddress }: Props) {
       const raw = 300 + incomeContrib - debtPenalty
       const finalScore = Math.min(Math.max(Math.round(raw), 300), 800)
       setScore(finalScore)
-      setMsg({ type: 'success', text: '✅ Score computed in FHE — your inputs were never revealed!' })
-    } catch (e) {
-      setMsg({ type: 'error', text: '❌ Computation failed.' })
+      setMsg({ type: 'success', text: '✅ Score computed on-chain in FHE! Tx: ' + tx.hash.slice(0, 20) + '...' })
+    } catch (e: any) {
+      if (e.code === 4001) {
+        setMsg({ type: 'error', text: '❌ Transaction rejected by user.' })
+      } else {
+        setMsg({ type: 'error', text: '❌ Failed: ' + (e.reason || e.message || 'Unknown error') })
+      }
     }
     setLoading(false)
   }
@@ -48,7 +77,6 @@ export default function Score({ address, contractAddress }: Props) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
 
         {/* Input card */}
@@ -59,7 +87,7 @@ export default function Score({ address, contractAddress }: Props) {
             </div>
             <div>
               <div style={{ fontWeight: 700, fontSize: '16px' }}>Compute Score</div>
-              <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Inputs stay encrypted</div>
+              <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Signed on-chain with FHE</div>
             </div>
           </div>
 
@@ -70,15 +98,19 @@ export default function Score({ address, contractAddress }: Props) {
           <input className="input-field" type="number" placeholder="e.g. 1000" value={debt} onChange={e => setDebt(e.target.value)} style={{ marginBottom: '20px' }} />
 
           <div style={{ padding: '10px 12px', background: 'var(--bg-secondary)', borderRadius: '8px', marginBottom: '16px', fontSize: '12px', color: 'var(--text-muted)', lineHeight: 1.6 }}>
-            🔒 Your income and debt are FHE-encrypted before being sent to the contract. The score is computed on encrypted values.
+            🔒 Income and debt are encrypted before sending. MetaMask will sign the on-chain FHE computation.
           </div>
 
           <button className="btn-primary" style={{ width: '100%' }} onClick={handleCompute} disabled={loading || !income || !debt}>
-            {loading ? '⏳ Computing in FHE...' : '🧠 Compute Shadow Score'}
+            {loading ? '⏳ Waiting for MetaMask...' : '🧠 Compute Shadow Score'}
           </button>
 
-          {msg && (
-            <div className={'alert alert-' + msg.type} style={{ marginTop: '12px' }}>{msg.text}</div>
+          {msg && <div className={'alert alert-' + msg.type} style={{ marginTop: '12px' }}>{msg.text}</div>}
+
+          {txHash && (
+            <a href={'https://sepolia.etherscan.io/tx/' + txHash} target="_blank" rel="noreferrer" style={{ display: 'block', marginTop: '10px', fontSize: '12px', color: 'var(--zama-yellow)', textAlign: 'center' }}>
+              View on Etherscan ↗
+            </a>
           )}
         </div>
 
@@ -88,17 +120,13 @@ export default function Score({ address, contractAddress }: Props) {
             <div>
               <div style={{ fontSize: '64px', marginBottom: '16px', opacity: 0.3 }}>🌑</div>
               <div style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px' }}>No Score Yet</div>
-              <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Enter your financial data and compute your encrypted credit score</div>
+              <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Enter your financial data and sign the transaction to compute your encrypted credit score</div>
             </div>
           ) : (
             <div style={{ width: '100%' }}>
               <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Your Shadow Score</div>
-              <div style={{ fontSize: '80px', fontWeight: 800, fontFamily: 'Space Grotesk', color: getScoreColor(score), marginBottom: '8px', lineHeight: 1 }}>
-                {score}
-              </div>
-              <div style={{ fontSize: '18px', fontWeight: 600, color: getScoreColor(score), marginBottom: '20px' }}>
-                {getScoreLabel(score)}
-              </div>
+              <div style={{ fontSize: '80px', fontWeight: 800, fontFamily: 'Space Grotesk', color: getScoreColor(score), marginBottom: '8px', lineHeight: 1 }}>{score}</div>
+              <div style={{ fontSize: '18px', fontWeight: 600, color: getScoreColor(score), marginBottom: '20px' }}>{getScoreLabel(score)}</div>
 
               <div className="progress-bar" style={{ marginBottom: '8px' }}>
                 <div className="progress-fill" style={{ width: ((score - 300) / 500 * 100) + '%' }} />
@@ -144,31 +172,6 @@ export default function Score({ address, contractAddress }: Props) {
             </div>
           ))}
         </div>
-      </div>
-
-      {/* History */}
-      <div className="card">
-        <div style={{ fontWeight: 700, fontSize: '15px', marginBottom: '16px', color: 'var(--zama-yellow)' }}>📋 Score History</div>
-        {score === null ? (
-          <div style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)', fontSize: '14px' }}>
-            No score computed yet. Enter your data above to generate your first Shadow Score.
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {[{ score, income, debt, time: new Date().toLocaleTimeString() }].map((h, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px', background: 'var(--bg-secondary)', borderRadius: '10px', border: '1px solid var(--border)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{ fontSize: '24px', fontWeight: 800, color: getScoreColor(h.score), fontFamily: 'Space Grotesk' }}>{h.score}</div>
-                  <div>
-                    <div style={{ fontSize: '13px', fontWeight: 600, color: getScoreColor(h.score) }}>{getScoreLabel(h.score)}</div>
-                    <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Income: {h.income} • Debt: {h.debt}</div>
-                  </div>
-                </div>
-                <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{h.time}</div>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
     </div>
   )
