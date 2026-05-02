@@ -5,7 +5,7 @@
 > The first fully private DeFi vault with FHE credit scoring and selective disclosure proofs.
 
 🌐 **Live Demo:** [shadowvault-6jkr.vercel.app](https://shadowvault-6jkr.vercel.app) 
-📄 **Contract:** [0xa31AAF62dCD1362D457BD02d3907Bf9958Ae027E](https://sepolia.etherscan.io/address/0xa31AAF62dCD1362D457BD02d3907Bf9958Ae027E)  
+📄 **Contract:** [0x47CC415AC24ca796a6f8E1cbDAEC319FD70AF844](https://sepolia.etherscan.io/address/0x47CC415AC24ca796a6f8E1cbDAEC319FD70AF844)  
 🎥 **Video Demo:** [Link coming soon]
 
 ---
@@ -89,7 +89,7 @@ Every core FHE operation is used naturally — not forced.
 | Item | Details |
 |---|---|
 | Network | Sepolia Testnet |
-| Contract Address | `0xa31AAF62dCD1362D457BD02d3907Bf9958Ae027E` |
+| Contract Address | `0x47CC415AC24ca796a6f8E1cbDAEC319FD70AF844` |
 | Frontend | Vercel |
 | FHE Library | `@fhevm/solidity` by Zama |
 
