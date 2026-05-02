@@ -57,13 +57,13 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.Counter__factory>;
     getContractFactory(
-      name: "CounterTest",
-      signerOrOptions?: ethers.Signer | FactoryOptions
-    ): Promise<Contracts.CounterTest__factory>;
-    getContractFactory(
       name: "ShadowVault",
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.ShadowVault__factory>;
+    getContractFactory(
+      name: "ShadowVaultDemo",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.ShadowVaultDemo__factory>;
 
     getContractAt(
       name: "ZamaConfig",
@@ -121,15 +121,15 @@ declare module "hardhat/types/runtime" {
       signer?: ethers.Signer
     ): Promise<Contracts.Counter>;
     getContractAt(
-      name: "CounterTest",
-      address: string,
-      signer?: ethers.Signer
-    ): Promise<Contracts.CounterTest>;
-    getContractAt(
       name: "ShadowVault",
       address: string,
       signer?: ethers.Signer
     ): Promise<Contracts.ShadowVault>;
+    getContractAt(
+      name: "ShadowVaultDemo",
+      address: string,
+      signer?: ethers.Signer
+    ): Promise<Contracts.ShadowVaultDemo>;
 
     // default types
     getContractFactory(

@@ -1,7 +1,7 @@
 import { ethers } from "hardhat";
 
 async function main() {
-  console.log("🚀 Deploying ShadowVault to Sepolia...");
+  console.log("🚀 Deploying ShadowVaultDemo to Sepolia...");
 
   const [deployer] = await ethers.getSigners();
   console.log("📝 Deploying with account:", deployer.address);
@@ -9,13 +9,13 @@ async function main() {
   const balance = await deployer.getBalance();
   console.log("💰 Account balance:", ethers.utils.formatEther(balance), "ETH");
 
-  const ShadowVault = await ethers.getContractFactory("ShadowVault");
-  const shadowVault = await ShadowVault.deploy();
+  const ShadowVaultDemo = await ethers.getContractFactory("ShadowVaultDemo");
+  const shadowVaultDemo = await ShadowVaultDemo.deploy();
 
-  await shadowVault.deployed();
+  await shadowVaultDemo.deployed();
 
-  console.log("✅ ShadowVault deployed to:", shadowVault.address);
-  console.log("🔗 View on Etherscan: https://sepolia.etherscan.io/address/" + shadowVault.address);
+  console.log("✅ ShadowVaultDemo deployed to:", shadowVaultDemo.address);
+  console.log("🔗 View on Etherscan: https://sepolia.etherscan.io/address/" + shadowVaultDemo.address);
 }
 
 main()

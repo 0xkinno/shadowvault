@@ -30,7 +30,7 @@ export type { ReentrancyGuard } from "./@openzeppelin/contracts/utils/Reentrancy
 export { ReentrancyGuard__factory } from "./factories/@openzeppelin/contracts/utils/ReentrancyGuard__factory";
 export type { Counter } from "./contracts/Counter";
 export { Counter__factory } from "./factories/contracts/Counter__factory";
-export type { CounterTest } from "./contracts/Counter.t.sol/CounterTest";
-export { CounterTest__factory } from "./factories/contracts/Counter.t.sol/CounterTest__factory";
 export type { ShadowVault } from "./contracts/ShadowVault";
 export { ShadowVault__factory } from "./factories/contracts/ShadowVault__factory";
+export type { ShadowVaultDemo } from "./contracts/ShadowVaultDemo";
+export { ShadowVaultDemo__factory } from "./factories/contracts/ShadowVaultDemo__factory";
