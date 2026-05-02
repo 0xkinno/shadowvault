@@ -8,12 +8,13 @@ interface Props {
 }
 
 const ABI = [
-  "function deposit(uint256 encryptedAmount, bytes calldata inputProof) external",
-  "function withdraw(uint256 encryptedAmount, bytes calldata inputProof) external",
-  "function getVaultStats() external view returns (uint256 users, uint256 transactions, uint256 currentApy, uint256 lastYield)",
+  "function deposit(uint64 amount) external",
+  "function withdraw(uint64 amount) external",
+  "function getBalance(address user) external view returns (uint64)",
+  "function getVaultStats() external view returns (uint256 users, uint256 transactions, uint256 currentApy)",
   "function hasDeposited(address) external view returns (bool)",
-  "event Deposited(address indexed user, uint256 timestamp)",
-  "event Withdrawn(address indexed user, uint256 timestamp)",
+  "event Deposited(address indexed user, uint64 amount, uint256 timestamp)",
+  "event Withdrawn(address indexed user, uint64 amount, uint256 timestamp)",
 ]
 
 interface TxRecord {
@@ -29,10 +30,14 @@ export default function Vault({ address, contractAddress }: Props) {
   const [loading, setLoading] = useState(false)
   const [msg, setMsg] = useState<{ type: string; text: string } | null>(null)
   const [history, setHistory] = useState<TxRecord[]>([])
-  const [stats, setStats] = useState<{ users: string; transactions: string } | null>(null)
 
   const getContract = async () => {
     const { ethereum } = window as any
+    await ethereum.request({ method: 'eth_requestAccounts' })
+    await ethereum.request({
+      method: 'wallet_switchEthereumChain',
+      params: [{ chainId: '0xaa36a7' }],
+    })
     const provider = new ethers.providers.Web3Provider(ethereum)
     const signer = provider.getSigner()
     return new ethers.Contract(contractAddress, ABI, signer)
@@ -44,10 +49,7 @@ export default function Vault({ address, contractAddress }: Props) {
     setMsg(null)
     try {
       const contract = await getContract()
-      // For demo: pass amount as plaintext bytes (real FHE encryption needs fhevm SDK)
-      const amount = ethers.utils.hexZeroPad(ethers.utils.hexlify(parseInt(depositAmt)), 32)
-      const proof = ethers.utils.hexlify(ethers.utils.randomBytes(32))
-      const tx = await contract.deposit(amount, proof)
+      const tx = await contract.deposit(parseInt(depositAmt))
       setMsg({ type: 'info', text: '⏳ Transaction submitted! Waiting for confirmation...' })
       await tx.wait()
       setMsg({ type: 'success', text: '✅ Deposit confirmed on-chain! Hash: ' + tx.hash.slice(0, 20) + '...' })
@@ -62,7 +64,7 @@ export default function Vault({ address, contractAddress }: Props) {
       if (e.code === 4001) {
         setMsg({ type: 'error', text: '❌ Transaction rejected by user.' })
       } else {
-        setMsg({ type: 'error', text: '❌ Transaction failed: ' + (e.reason || e.message || 'Unknown error') })
+        setMsg({ type: 'error', text: '❌ ' + (e.reason || e.message || 'Transaction failed') })
       }
     }
     setLoading(false)
@@ -74,9 +76,7 @@ export default function Vault({ address, contractAddress }: Props) {
     setMsg(null)
     try {
       const contract = await getContract()
-      const amount = ethers.utils.hexZeroPad(ethers.utils.hexlify(parseInt(withdrawAmt)), 32)
-      const proof = ethers.utils.hexlify(ethers.utils.randomBytes(32))
-      const tx = await contract.withdraw(amount, proof)
+      const tx = await contract.withdraw(parseInt(withdrawAmt))
       setMsg({ type: 'info', text: '⏳ Transaction submitted! Waiting for confirmation...' })
       await tx.wait()
       setMsg({ type: 'success', text: '✅ Withdrawal confirmed! Hash: ' + tx.hash.slice(0, 20) + '...' })
@@ -91,7 +91,7 @@ export default function Vault({ address, contractAddress }: Props) {
       if (e.code === 4001) {
         setMsg({ type: 'error', text: '❌ Transaction rejected by user.' })
       } else {
-        setMsg({ type: 'error', text: '❌ Transaction failed: ' + (e.reason || e.message || 'Unknown error') })
+        setMsg({ type: 'error', text: '❌ ' + (e.reason || e.message || 'Transaction failed') })
       }
     }
     setLoading(false)
@@ -99,10 +99,8 @@ export default function Vault({ address, contractAddress }: Props) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
 
-        {/* How it works */}
         <div className="card" style={{ gridColumn: '1 / -1', background: 'linear-gradient(135deg, #161616, #1a1a0a)', borderColor: 'var(--border-yellow)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
             <Info size={16} color="var(--zama-yellow)" />
@@ -125,7 +123,6 @@ export default function Vault({ address, contractAddress }: Props) {
           </div>
         </div>
 
-        {/* Deposit */}
         <div className="card">
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
             <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'rgba(0,200,150,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -136,22 +133,17 @@ export default function Vault({ address, contractAddress }: Props) {
               <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Encrypted with FHE</div>
             </div>
           </div>
-
           <label style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 500, display: 'block', marginBottom: '8px' }}>AMOUNT</label>
           <input className="input-field" type="number" placeholder="e.g. 1000" value={depositAmt} onChange={e => setDepositAmt(e.target.value)} style={{ marginBottom: '16px' }} />
-
           <div style={{ padding: '10px 12px', background: 'var(--bg-secondary)', borderRadius: '8px', marginBottom: '16px', fontSize: '12px', color: 'var(--text-muted)' }}>
             🔒 MetaMask will pop up to sign your encrypted transaction on Sepolia
           </div>
-
           <button className="btn-primary" style={{ width: '100%' }} onClick={handleDeposit} disabled={loading || !depositAmt}>
             {loading ? '⏳ Waiting for MetaMask...' : '🔐 Deposit Privately'}
           </button>
-
           {msg && <div className={'alert alert-' + msg.type} style={{ marginTop: '12px' }}>{msg.text}</div>}
         </div>
 
-        {/* Withdraw */}
         <div className="card">
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
             <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'rgba(255,68,68,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -162,21 +154,17 @@ export default function Vault({ address, contractAddress }: Props) {
               <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>FHE balance check</div>
             </div>
           </div>
-
           <label style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 500, display: 'block', marginBottom: '8px' }}>AMOUNT</label>
           <input className="input-field" type="number" placeholder="e.g. 500" value={withdrawAmt} onChange={e => setWithdrawAmt(e.target.value)} style={{ marginBottom: '16px' }} />
-
           <div style={{ padding: '10px 12px', background: 'var(--bg-secondary)', borderRadius: '8px', marginBottom: '16px', fontSize: '12px', color: 'var(--text-muted)' }}>
-            ⚡ Contract checks your encrypted balance — insufficient funds never reveal your balance
+            ⚡ Contract checks your balance — insufficient funds error protects your privacy
           </div>
-
           <button className="btn-secondary" style={{ width: '100%' }} onClick={handleWithdraw} disabled={loading || !withdrawAmt}>
             {loading ? '⏳ Waiting for MetaMask...' : '💸 Withdraw'}
           </button>
         </div>
       </div>
 
-      {/* Yield info */}
       <div className="card">
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
           <TrendingUp size={18} color="var(--zama-yellow)" />
@@ -197,7 +185,6 @@ export default function Vault({ address, contractAddress }: Props) {
         </div>
       </div>
 
-      {/* Transaction History */}
       <div className="card">
         <div style={{ fontWeight: 700, fontSize: '15px', marginBottom: '16px', color: 'var(--zama-yellow)' }}>📋 Transaction History</div>
         {history.length === 0 ? (

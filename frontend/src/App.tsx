@@ -4,7 +4,7 @@ import Vault from './components/Vault'
 import Score from './components/Score'
 import Proofs from './components/Proofs'
 
-const CONTRACT = '0xa31AAF62dCD1362D457BD02d3907Bf9958Ae027E'
+const CONTRACT = '0x47CC415AC24ca796a6f8E1cbDAEC319FD70AF844'
 
 export default function App() {
   const [tab, setTab] = useState('vault')

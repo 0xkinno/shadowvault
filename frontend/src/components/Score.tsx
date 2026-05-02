@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Brain } from 'lucide-react'
+import { Brain, TrendingUp } from 'lucide-react'
 import { ethers } from 'ethers'
 
 interface Props {
@@ -8,7 +8,9 @@ interface Props {
 }
 
 const ABI = [
-  "function computeScore(uint256 encryptedIncome, bytes calldata incomeProof, uint256 encryptedDebt, bytes calldata debtProof) external",
+  "function computeScore(uint64 income, uint64 debt) external",
+  "function getScore(address user) external view returns (uint64)",
+  "function hasProfile(address) external view returns (bool)",
 ]
 
 export default function Score({ address, contractAddress }: Props) {
@@ -17,13 +19,17 @@ export default function Score({ address, contractAddress }: Props) {
   const [loading, setLoading] = useState(false)
   const [score, setScore] = useState<number | null>(null)
   const [msg, setMsg] = useState<{ type: string; text: string } | null>(null)
-  const [txHash, setTxHash] = useState('')
 
   const getContract = async () => {
     const { ethereum } = window as any
+    await ethereum.request({ method: 'eth_requestAccounts' })
+    await ethereum.request({
+      method: 'wallet_switchEthereumChain',
+      params: [{ chainId: '0xaa36a7' }],
+    })
     const provider = new ethers.providers.Web3Provider(ethereum)
     const signer = provider.getSigner()
-    return new ethers.Contract(contractAddress, ABI, signer)
+    return { contract: new ethers.Contract(contractAddress, ABI, signer), provider }
   }
 
   const handleCompute = async () => {
@@ -31,32 +37,18 @@ export default function Score({ address, contractAddress }: Props) {
     setLoading(true)
     setMsg(null)
     try {
-      const contract = await getContract()
-      const encIncome = ethers.utils.hexZeroPad(ethers.utils.hexlify(parseInt(income)), 32)
-      const encDebt = ethers.utils.hexZeroPad(ethers.utils.hexlify(parseInt(debt)), 32)
-      const incomeProof = ethers.utils.hexlify(ethers.utils.randomBytes(32))
-      const debtProof = ethers.utils.hexlify(ethers.utils.randomBytes(32))
-
-      setMsg({ type: 'info', text: '⏳ MetaMask opening — please sign the transaction...' })
-      const tx = await contract.computeScore(encIncome, incomeProof, encDebt, debtProof)
+      const { contract, provider } = await getContract()
+      const tx = await contract.computeScore(parseInt(income), parseInt(debt))
       setMsg({ type: 'info', text: '⏳ Transaction submitted! Waiting for confirmation...' })
       await tx.wait()
-      setTxHash(tx.hash)
-
-      // Compute score locally to display result
-      const inc = parseInt(income)
-      const dbt = parseInt(debt)
-      const incomeContrib = Math.min((inc * 500) / 1000, 500)
-      const debtPenalty = Math.min((dbt * 200) / 1000, 200)
-      const raw = 300 + incomeContrib - debtPenalty
-      const finalScore = Math.min(Math.max(Math.round(raw), 300), 800)
-      setScore(finalScore)
-      setMsg({ type: 'success', text: '✅ Score computed on-chain in FHE! Tx: ' + tx.hash.slice(0, 20) + '...' })
+      const rawScore = await contract.getScore(address)
+      setScore(parseInt(rawScore.toString()))
+      setMsg({ type: 'success', text: '✅ Score computed on-chain! Hash: ' + tx.hash.slice(0, 20) + '...' })
     } catch (e: any) {
       if (e.code === 4001) {
-        setMsg({ type: 'error', text: '❌ Transaction rejected by user.' })
+        setMsg({ type: 'error', text: '❌ Transaction rejected.' })
       } else {
-        setMsg({ type: 'error', text: '❌ Failed: ' + (e.reason || e.message || 'Unknown error') })
+        setMsg({ type: 'error', text: '❌ ' + (e.reason || e.message || 'Failed') })
       }
     }
     setLoading(false)
@@ -79,7 +71,6 @@ export default function Score({ address, contractAddress }: Props) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
 
-        {/* Input card */}
         <div className="card">
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
             <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'var(--zama-yellow-glow)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -106,15 +97,8 @@ export default function Score({ address, contractAddress }: Props) {
           </button>
 
           {msg && <div className={'alert alert-' + msg.type} style={{ marginTop: '12px' }}>{msg.text}</div>}
-
-          {txHash && (
-            <a href={'https://sepolia.etherscan.io/tx/' + txHash} target="_blank" rel="noreferrer" style={{ display: 'block', marginTop: '10px', fontSize: '12px', color: 'var(--zama-yellow)', textAlign: 'center' }}>
-              View on Etherscan ↗
-            </a>
-          )}
         </div>
 
-        {/* Score display */}
         <div className="card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
           {score === null ? (
             <div>
@@ -155,7 +139,6 @@ export default function Score({ address, contractAddress }: Props) {
         </div>
       </div>
 
-      {/* Formula */}
       <div className="card">
         <div style={{ fontWeight: 700, fontSize: '15px', marginBottom: '16px', color: 'var(--zama-yellow)' }}>📐 FHE Score Formula</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
@@ -163,7 +146,7 @@ export default function Score({ address, contractAddress }: Props) {
             { label: 'Base Score', value: '300 pts', desc: 'Starting baseline' },
             { label: 'Income Boost', value: '+500 max', desc: '(income × 500) / 1000' },
             { label: 'Debt Penalty', value: '-200 max', desc: '(debt × 200) / 1000' },
-            { label: 'Range', value: '300–800', desc: 'Clamped with FHE.select()' },
+            { label: 'Range', value: '300–800', desc: 'Clamped on-chain' },
           ].map((f, i) => (
             <div key={i} style={{ padding: '14px', background: 'var(--bg-secondary)', borderRadius: '10px' }}>
               <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{f.label}</div>
