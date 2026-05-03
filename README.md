@@ -6,7 +6,7 @@
 
 🌐 **Live Demo:** [shadowvault-6jkr.vercel.app](https://shadowvault-6jkr.vercel.app) 
 📄 **Contract:** [0x47CC415AC24ca796a6f8E1cbDAEC319FD70AF844](https://sepolia.etherscan.io/address/0x47CC415AC24ca796a6f8E1cbDAEC319FD70AF844)  
-🎥 **Video Demo:** [Link coming soon]
+🎥 **Video Demo:** [https://www.youtube.com/watch?v=V9cgOMdw7FI]
 
 ---
 
